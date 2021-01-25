@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Sound Recorder</string>
+    <string name="stop">Stop</string>
+    <string name="tap_the_button_to_start_recording">Tap the button to start recording</string>
+    <string name="no_records_are_saved">No records are saved...</string>
+    <string name="tab_title_record">Record</string>
+    <string name="tab_title_saved_recordings">Saved Recordings</string>
+</resources>
