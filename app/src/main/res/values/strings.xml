@@ -5,4 +5,21 @@
     <string name="no_records_are_saved">No records are saved...</string>
     <string name="tab_title_record">Record</string>
     <string name="tab_title_saved_recordings">Saved Recordings</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="pause">Pause</string>
+    <string name="_00_00">00:00</string>
+    <string name="share_file">Share File</string>
+    <string name="rename_file">Rename File</string>
+    <string name="delete_file">Delete File</string>
+    <string name="options">Options</string>
+    <string name="cancel">Cancel</string>
+    <string name="send_to">Send to</string>
+    <string name="mp3">.mp3</string>
+    <string name="ok">OK</string>
+    <string name="toast_file_exists">This file %1$s already exists. Please choose a different file name.</string>
+    <string name="confrim_delete">Confirm Delete...</string>
+    <string name="delete_message">Are you sure you would like to delete this file?</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
 </resources>

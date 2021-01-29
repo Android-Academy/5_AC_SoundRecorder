@@ -99,11 +99,23 @@ public class DBHelper extends SQLiteOpenHelper {
             item.setName(c.getString(c.getColumnIndex(DBHelperItem.COLUMN_NAME_RECORDING_NAME)));
             item.setFilePath(c.getString(c.getColumnIndex(DBHelperItem.COLUMN_NAME_RECORDING_FILE_PATH)));
             item.setLength(c.getInt(c.getColumnIndex(DBHelperItem.COLUMN_NAME_RECORDING_LENGTH)));
-            item.setTime(c.getInt Kto_getLong_Duhet_ (c.getColumnIndex(DBHelperItem.COLUMN_NAME_RECORDING_TIME_ADDED)));
+            item.setTime(c.getLong(c.getColumnIndex(DBHelperItem.COLUMN_NAME_RECORDING_TIME_ADDED)));
             c.close();
             return item;
         }
         return null;
+    }
+
+    public void renameItem(RecordingItem item, String name, String filePath) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(DBHelperItem.COLUMN_NAME_RECORDING_NAME, name);
+        cv.put(DBHelperItem.COLUMN_NAME_RECORDING_FILE_PATH, filePath);
+
+        db.update(DBHelperItem.TABLE_NAME, cv, DBHelperItem._ID + "=" + item.getId(), null);
+
+        if (onDatabaseChangedListener != null)
+            onDatabaseChangedListener.onDatabaseEntryRenamed();
     }
 
     public static abstract class DBHelperItem implements BaseColumns {
