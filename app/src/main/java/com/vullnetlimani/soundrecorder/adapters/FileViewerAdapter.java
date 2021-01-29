@@ -187,7 +187,6 @@ public class FileViewerAdapter extends RecyclerView.Adapter<FileViewerAdapter.Re
     }
     private void renameFileDialog(int position) {
 
-
         AlertDialog.Builder renameFileBuilder = new AlertDialog.Builder(appCompatActivity);
         LayoutInflater inflater = LayoutInflater.from(appCompatActivity);
 
