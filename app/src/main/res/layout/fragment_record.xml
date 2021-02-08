@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
     android:id="@+id/fragment_record"
+    android:layout_width="match_parent"
     android:layout_height="match_parent">
 
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
@@ -48,7 +48,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-
     <com.visualizer.amplitude.AudioRecordView
         android:id="@+id/audioRecordView"
         android:layout_width="match_parent"
@@ -57,7 +56,7 @@
         android:layout_marginEnd="20dp"
         app:chunkAlignTo="bottom"
         app:chunkColor="@color/primary"
-        app:chunkMaxHeight="48dp"
+        app:chunkMaxHeight="60dp"
         app:chunkMinHeight="2dp"
         app:chunkRoundedCorners="false"
         app:chunkSoftTransition="false"

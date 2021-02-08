@@ -5,6 +5,8 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 
+import com.vullnetlimani.soundrecorder.fragments.FileViewerFragment;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,5 +31,9 @@ public class MyViewPagerAdapter extends FragmentStateAdapter {
 
     public void addFragment(Fragment fragment) {
         mFragmentList.add(fragment);
+    }
+
+    public Fragment getFragment(int position) {
+        return mFragmentList.get(position);
     }
 }

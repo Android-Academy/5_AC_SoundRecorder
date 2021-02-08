@@ -24,12 +24,12 @@ import androidx.fragment.app.DialogFragment;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.vullnetlimani.soundrecorder.R;
-import com.vullnetlimani.soundrecorder.RecordingItem;
+import com.vullnetlimani.soundrecorder.Helper.RecordingItem;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-import static com.vullnetlimani.soundrecorder.RecordingService.getRealPathFromURI;
+import static com.vullnetlimani.soundrecorder.service.RecordingService.getRealPathFromURI;
 
 public class PlaybackFragment extends DialogFragment {
 

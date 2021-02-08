@@ -1,4 +1,4 @@
-package com.vullnetlimani.soundrecorder.database;
+package com.vullnetlimani.soundrecorder.listeners;
 
 public interface OnDatabaseChangedListener {
     void onNewDatabaseEntryAdded();

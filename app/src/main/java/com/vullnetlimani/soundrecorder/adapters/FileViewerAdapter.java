@@ -8,47 +8,54 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.text.format.DateUtils;
 import android.util.Log;
+import android.util.SparseBooleanArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.databinding.DataBindingUtil;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.vullnetlimani.soundrecorder.R;
-import com.vullnetlimani.soundrecorder.RecordingItem;
+import com.vullnetlimani.soundrecorder.Helper.RecordingItem;
+import com.vullnetlimani.soundrecorder.background.DeleteAll;
 import com.vullnetlimani.soundrecorder.database.DBHelper;
-import com.vullnetlimani.soundrecorder.database.OnDatabaseChangedListener;
+import com.vullnetlimani.soundrecorder.databinding.CardViewBinding;
 import com.vullnetlimani.soundrecorder.fragments.FileViewerFragment;
 import com.vullnetlimani.soundrecorder.fragments.PlaybackFragment;
+import com.vullnetlimani.soundrecorder.listeners.OnDatabaseChangedListener;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static com.vullnetlimani.soundrecorder.RecordingService.getRealPathFromURI;
+import static com.vullnetlimani.soundrecorder.service.RecordingService.getRealPathFromURI;
 import static com.vullnetlimani.soundrecorder.fragments.FileViewerFragment.SOUND_RECORDER_WITH_SEP;
 
 public class FileViewerAdapter extends RecyclerView.Adapter<FileViewerAdapter.RecordingsViewHolder> implements OnDatabaseChangedListener {
 
     public static final String DIALOG_PLAYBACK = "dialog_playback";
     private static final String LOG_TAG = "FileViewerAdapterLog";
+    private final SparseBooleanArray selectedItems;
+    private final DBHelper mDatabase;
     AppCompatActivity appCompatActivity;
     LinearLayoutManager linearLayoutManager;
     FileViewerFragment fileViewerFragment;
-    private DBHelper mDatabase;
     private RecordingItem recordingItem;
+    private int selectedIndex = -1;
+    private boolean isSelectModeOn = false;
 
     public FileViewerAdapter(AppCompatActivity appCompatActivity, FileViewerFragment fileViewerFragment, LinearLayoutManager linearLayoutManager) {
         super();
@@ -57,18 +64,27 @@ public class FileViewerAdapter extends RecyclerView.Adapter<FileViewerAdapter.Re
         this.fileViewerFragment = fileViewerFragment;
         this.linearLayoutManager = linearLayoutManager;
 
+        selectedItems = new SparseBooleanArray();
         mDatabase = new DBHelper(appCompatActivity);
         DBHelper.setOnDatabaseChangedLister(this);
 
+    }
+
+    public boolean isSelectModeOn() {
+        return isSelectModeOn;
+    }
+
+    public void setSelectModeOn(boolean selectModeOn) {
+        isSelectModeOn = selectModeOn;
     }
 
     @NonNull
     @Override
     public RecordingsViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.card_view, parent, false);
+        CardViewBinding cardViewBinding = DataBindingUtil.inflate(LayoutInflater.from(parent.getContext()), R.layout.card_view, parent, false);
 
-        return new RecordingsViewHolder(view);
+        return new RecordingsViewHolder(cardViewBinding);
     }
 
     @SuppressLint("DefaultLocale")
@@ -84,27 +100,39 @@ public class FileViewerAdapter extends RecyclerView.Adapter<FileViewerAdapter.Re
         long minutes = TimeUnit.MILLISECONDS.toMinutes(itemDuration);
         long seconds = TimeUnit.MILLISECONDS.toSeconds(itemDuration) - TimeUnit.MINUTES.toSeconds(minutes);
 
-        holder.file_name_text.setText(recordingItem.getName());
-        holder.file_length_text.setText(String.format("%02d:%02d", minutes, seconds));
+        holder.mCardViewBinding.fileNameText.setText(recordingItem.getName());
+        holder.mCardViewBinding.fileLengthText.setText(String.format("%02d:%02d", minutes, seconds));
 
-        holder.file_date_added_text.setText(
+        holder.mCardViewBinding.fileDateAddedText.setText(
                 DateUtils.formatDateTime(appCompatActivity,
                         recordingItem.getTime(),
                         DateUtils.FORMAT_SHOW_DATE | DateUtils.FORMAT_NUMERIC_DATE | DateUtils.FORMAT_SHOW_TIME | DateUtils.FORMAT_SHOW_YEAR
                 ));
 
-        holder.cardView.setOnClickListener(new View.OnClickListener() {
+        holder.mCardViewBinding.cardView.setActivated(selectedItems.get(position, false));
+
+        holder.mCardViewBinding.cardView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                PlaybackFragment playbackFragment = new PlaybackFragment().newInstance(getItem(holder.getLayoutPosition()), appCompatActivity);
-                FragmentTransaction transaction = appCompatActivity.getSupportFragmentManager().beginTransaction();
-                playbackFragment.show(transaction, DIALOG_PLAYBACK);
+
+                if (isSelectModeOn) {
+
+                    toggleSelection(position);
+
+                } else {
+                    PlaybackFragment playbackFragment = new PlaybackFragment().newInstance(getItem(holder.getLayoutPosition()), appCompatActivity);
+                    FragmentTransaction transaction = appCompatActivity.getSupportFragmentManager().beginTransaction();
+                    playbackFragment.show(transaction, DIALOG_PLAYBACK);
+                }
+
+
             }
         });
 
-        holder.cardView.setOnLongClickListener(new View.OnLongClickListener() {
+        holder.mCardViewBinding.cardView.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
+
 
                 ArrayList<String> entries = new ArrayList<>();
                 entries.add(appCompatActivity.getString(R.string.share_file));
@@ -150,12 +178,25 @@ public class FileViewerAdapter extends RecyclerView.Adapter<FileViewerAdapter.Re
             }
         });
 
+        toggleIcon(holder.mCardViewBinding, position);
+    }
+
+    private void toggleIcon(CardViewBinding mCardViewBinding, int position) {
+        if (selectedItems.get(position, false)) {
+            mCardViewBinding.imageView.setImageResource(R.drawable.ic_selected);
+        } else {
+            mCardViewBinding.imageView.setImageResource(R.drawable.ic_mic);
+        }
+
+        if (selectedIndex == position)
+            selectedIndex = -1;
+
     }
 
     private void deleteFileDialog(int position) {
 
         AlertDialog.Builder renameFileBuilder = new AlertDialog.Builder(appCompatActivity);
-        renameFileBuilder.setTitle(R.string.confrim_delete);
+        renameFileBuilder.setTitle(R.string.confirm_delete);
         renameFileBuilder.setMessage(R.string.delete_message);
         renameFileBuilder.setCancelable(true);
         renameFileBuilder.setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
@@ -182,9 +223,44 @@ public class FileViewerAdapter extends RecyclerView.Adapter<FileViewerAdapter.Re
 
     private void remove(int position) {
 
-        Log.d(LOG_TAG, "Deleted Item - " + position);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+
+            final String where = MediaStore.MediaColumns.DISPLAY_NAME + "=?";
+
+            final String[] selectionArgs = new String[]{
+                    getItem(position).getName()
+            };
+
+            final ContentResolver contentResolver = appCompatActivity.getContentResolver();
+            final Uri mFileURI = MediaStore.Files.getContentUri("external");
+
+            contentResolver.delete(mFileURI, where, selectionArgs);
+
+        } else {
+
+            File mFileDelete = new File(getItem(position).getFilePath());
+            if (mFileDelete.delete()) {
+                Log.d(LOG_TAG, "File Deleted :" + mFileDelete.getAbsolutePath());
+            } else {
+                Log.d(LOG_TAG, "File Not Deleted :" + mFileDelete.getAbsolutePath());
+            }
+
+        }
+
+        mDatabase.removeItemWithId(getItem(position).getId());
+        notifyItemRemoved(position);
+
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+
+                fileViewerFragment.checkData();
+
+            }
+        }, 300);
 
     }
+
     private void renameFileDialog(int position) {
 
         AlertDialog.Builder renameFileBuilder = new AlertDialog.Builder(appCompatActivity);
@@ -221,6 +297,17 @@ public class FileViewerAdapter extends RecyclerView.Adapter<FileViewerAdapter.Re
         AlertDialog alertDialog = renameFileBuilder.create();
         alertDialog.show();
 
+    }
+
+    public boolean removeOutOfApp() {
+        if (mDatabase.getCount() > 0) {
+            DeleteAll deleteAll;
+            deleteAll = new DeleteAll(appCompatActivity, this, mDatabase);
+            deleteAll.execute();
+            return true;
+        } else {
+            return false;
+        }
     }
 
     private void rename(int position, String name) {
@@ -298,23 +385,91 @@ public class FileViewerAdapter extends RecyclerView.Adapter<FileViewerAdapter.Re
 
     }
 
+    public void checkIfFileIsDeletedOutSide(List<String> deletedFiles) {
+
+        if (deletedFiles.size() == 0) {
+
+            if (mDatabase.getCount() > 0) {
+                mDatabase.deleteAllData();
+                notifyDataSetChanged();
+                Log.d(LOG_TAG, "No File Exist Delete Database");
+            } else {
+                Log.d(LOG_TAG, "Everything is Clear");
+            }
+
+        } else {
+
+            List<Integer> needToBeDeleted = new ArrayList<>();
+
+            for (int i = 0; i < mDatabase.getCount(); i++) {
+
+                if (mDatabase.getItemAt(i) != null) {
+
+                    if (!deletedFiles.contains(mDatabase.getItemAt(i).getName())) {
+                        Log.d(LOG_TAG, "File Don't Exist More - " + mDatabase.getItemAt(i).getName());
+                        needToBeDeleted.add(mDatabase.getItemAt(i).getId());
+
+                    }
+                }
+            }
+
+            for (int id : needToBeDeleted) {
+                mDatabase.removeItemWithId(id);
+            }
+
+
+        }
+
+    }
+
+    private void toggleSelection(int position) {
+
+        selectedIndex = position;
+        if (selectedItems.get(position, false)) {
+            selectedItems.delete(position);
+        } else {
+            selectedItems.put(position, true);
+        }
+
+        notifyItemChanged(position);
+
+        int count = selectedItemCount();
+        fileViewerFragment.actionMode.setTitle(appCompatActivity.getString(R.string.selected, count));
+        fileViewerFragment.actionMode.invalidate();
+
+
+    }
+
+    private int selectedItemCount() {
+        return selectedItems.size();
+    }
+
+    public void clearSelection() {
+        selectedItems.clear();
+        notifyDataSetChanged();
+    }
+
+    public List<Integer> getSelectedItems() {
+        List<Integer> items = new ArrayList<>(selectedItems.size());
+        for (int i = 0; i < selectedItems.size(); i++) {
+            items.add(selectedItems.keyAt(i));
+        }
+        return items;
+    }
+
+    public void removeItems(int position) {
+        remove(position);
+        selectedIndex = -1;
+    }
+
     public static class RecordingsViewHolder extends RecyclerView.ViewHolder {
 
-        protected TextView file_name_text;
-        protected TextView file_length_text;
-        protected TextView file_date_added_text;
-        protected ImageView imageView;
-        protected View cardView;
+        CardViewBinding mCardViewBinding;
 
+        public RecordingsViewHolder(@NonNull CardViewBinding cardViewBinding) {
+            super(cardViewBinding.getRoot());
 
-        public RecordingsViewHolder(@NonNull View itemView) {
-            super(itemView);
-
-            file_name_text = itemView.findViewById(R.id.file_name_text);
-            file_length_text = itemView.findViewById(R.id.file_length_text);
-            file_date_added_text = itemView.findViewById(R.id.file_date_added_text);
-            imageView = itemView.findViewById(R.id.imageView);
-            cardView = itemView.findViewById(R.id.cardView);
+            mCardViewBinding = cardViewBinding;
 
         }
     }

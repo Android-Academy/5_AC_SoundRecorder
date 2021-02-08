@@ -7,10 +7,12 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.os.SystemClock;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.Chronometer;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,9 +28,9 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.visualizer.amplitude.AudioRecordView;
-import com.vullnetlimani.soundrecorder.MySharedPreferences;
+import com.vullnetlimani.soundrecorder.Helper.MySharedPreferences;
 import com.vullnetlimani.soundrecorder.R;
-import com.vullnetlimani.soundrecorder.RecordingService;
+import com.vullnetlimani.soundrecorder.service.RecordingService;
 import com.vullnetlimani.soundrecorder.database.DBHelper;
 
 import java.io.File;
@@ -43,9 +45,9 @@ public class RecordFragment extends Fragment {
     public static final int DENIED = 1;
     public static final int BLOCKED_OR_NEVER_ASKED = 2;
     static final int REQUEST_ID_MULTIPLE_PERMISSIONS = 1;
-    private final String[] mPermissions;
+    private String[] mPermissions;
 
-
+    private Handler mHandler = new Handler();
     private AppCompatActivity appCompatActivity;
     private ExtendedFloatingActionButton mRecordButton = null;
     private TextView mRecordingPrompt;
@@ -58,9 +60,20 @@ public class RecordFragment extends Fragment {
     private AudioRecordView audioRecordView;
     private DBHelper dbHelper;
 
+    public RecordFragment() {
+    }
+
     public RecordFragment(AppCompatActivity appCompatActivity) {
         this.appCompatActivity = appCompatActivity;
+    }
 
+    public boolean isRecordStarted() {
+        return isRecordStarted;
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 
@@ -76,8 +89,8 @@ public class RecordFragment extends Fragment {
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
             };
         }
-    }
 
+    }
 
     @Nullable
     @Override
@@ -116,6 +129,13 @@ public class RecordFragment extends Fragment {
 
             }
         });
+
+        RecordingService.setMyServiceListener(new RecordingService.MyServiceListener() {
+            @Override
+            public void onResult(int response) {
+                audioRecordView.update(response);
+            }
+        });
         return recordView;
     }
 
@@ -127,8 +147,13 @@ public class RecordFragment extends Fragment {
 
             isRecordStarted = true;
 
-            mRecordButton.extend();
-            mRecordButton.setIconResource(R.drawable.ic_media_stop);
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    mRecordButton.extend();
+                    mRecordButton.setIconResource(R.drawable.ic_media_stop);
+                }
+            }, 150);
 
 
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -146,13 +171,13 @@ public class RecordFragment extends Fragment {
 
                     switch (mRecordPromptCount) {
                         case 0:
-                            mRecordingPrompt.setText("Recording" + ".");
+                            mRecordingPrompt.setText(getString(R.string.record_in_progress) + ".");
                             break;
                         case 1:
-                            mRecordingPrompt.setText("Recording" + "..");
+                            mRecordingPrompt.setText(getString(R.string.record_in_progress) + "..");
                             break;
                         case 2:
-                            mRecordingPrompt.setText("Recording" + "...");
+                            mRecordingPrompt.setText(getString(R.string.record_in_progress) + "...");
                             mRecordPromptCount = -1;
                             break;
                         default:
@@ -164,26 +189,34 @@ public class RecordFragment extends Fragment {
                 }
             });
 
-
             appCompatActivity.startService(intent);
 
-            mRecordingPrompt.setText("Recording" + ".");
+            appCompatActivity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+            mRecordingPrompt.setText(getString(R.string.record_in_progress) + ".");
             mRecordPromptCount++;
 
         } else {
 
+            audioRecordView.recreate();
 
             isRecordStarted = false;
 
-
-            mRecordButton.shrink();
-            mRecordButton.setIconResource(R.drawable.ic_mic);
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    mRecordButton.shrink();
+                    mRecordButton.setIconResource(R.drawable.ic_mic);
+                }
+            }, 150);
 
             chronometer.stop();
             chronometer.setBase(SystemClock.elapsedRealtime());
             mRecordingPrompt.setText(getString(R.string.tap_the_button_to_start_recording));
 
             appCompatActivity.stopService(intent);
+
+            appCompatActivity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         }
     }
@@ -275,5 +308,9 @@ public class RecordFragment extends Fragment {
 
         }
 
+    }
+
+    public void stopService() {
+        onRecord(false);
     }
 }

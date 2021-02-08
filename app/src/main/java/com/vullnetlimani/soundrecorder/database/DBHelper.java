@@ -9,7 +9,8 @@ import android.provider.BaseColumns;
 
 import androidx.annotation.Nullable;
 
-import com.vullnetlimani.soundrecorder.RecordingItem;
+import com.vullnetlimani.soundrecorder.Helper.RecordingItem;
+import com.vullnetlimani.soundrecorder.listeners.OnDatabaseChangedListener;
 
 public class DBHelper extends SQLiteOpenHelper {
 
@@ -116,6 +117,17 @@ public class DBHelper extends SQLiteOpenHelper {
 
         if (onDatabaseChangedListener != null)
             onDatabaseChangedListener.onDatabaseEntryRenamed();
+    }
+
+    public void removeItemWithId(int id) {
+        SQLiteDatabase db = getWritableDatabase();
+        String[] whereArgs = {String.valueOf(id)};
+        db.delete(DBHelperItem.TABLE_NAME, "_ID=?", whereArgs);
+    }
+
+    public void deleteAllData() {
+        SQLiteDatabase db = getWritableDatabase();
+        db.execSQL("delete from " + DBHelperItem.TABLE_NAME);
     }
 
     public static abstract class DBHelperItem implements BaseColumns {

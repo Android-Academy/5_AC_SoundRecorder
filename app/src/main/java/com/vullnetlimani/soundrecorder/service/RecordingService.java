@@ -1,7 +1,10 @@
-package com.vullnetlimani.soundrecorder;
+package com.vullnetlimani.soundrecorder.service;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -18,6 +21,11 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.widget.Toast;
 
+import androidx.core.app.NotificationCompat;
+
+import com.vullnetlimani.soundrecorder.Helper.MySharedPreferences;
+import com.vullnetlimani.soundrecorder.R;
+import com.vullnetlimani.soundrecorder.activities.MainActivity;
 import com.vullnetlimani.soundrecorder.database.DBHelper;
 
 import java.io.File;
@@ -27,13 +35,20 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import static com.vullnetlimani.soundrecorder.fragments.FileViewerFragment.SOUND_RECORDER_WITH_SEP;
 
 public class RecordingService extends Service {
 
+    public static final String SOUND_RECORDER_ID = "SoundRecorderID";
     public static final String SOUND_RECORDER = "SoundRecorder";
     private static final String LOG_TAG = "RecordingServiceLog";
+    @SuppressLint("ConstantLocale")
+    private static final SimpleDateFormat mTimerFormat = new SimpleDateFormat("mm:ss", Locale.getDefault());
+    private static MyServiceListener myServiceListener;
     private MediaRecorder mRecorder = null;
     private String mFilePath;
     private String mFileName = null;
@@ -44,9 +59,17 @@ public class RecordingService extends Service {
     private DBHelper mDatabase;
     private long mStartingTimeMillis = 0;
     private long mElapsedMillis = 0;
+    private long mElapsedSeconds = 0;
+    private Timer mTimerVisual;
+    private Timer mTimer;
+    private TimerTask mIncrementTimerTask;
 
+    public static MyServiceListener getMyServiceListener() {
+        return RecordingService.myServiceListener;
+    }
 
-    public RecordingService() {
+    public static void setMyServiceListener(MyServiceListener myServiceListener) {
+        RecordingService.myServiceListener = myServiceListener;
     }
 
     public static Uri getRealPathFromURI(Context context, String mFileName) {
@@ -175,42 +198,120 @@ public class RecordingService extends Service {
         mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
         mRecorder.setAudioChannels(1);
 
-        mRecorder.setAudioSamplingRate(44100);
-        mRecorder.setAudioEncodingBitRate(192000);
+        if (MySharedPreferences.getPrefHighQuality(this)) {
+            mRecorder.setAudioSamplingRate(44100);
+            mRecorder.setAudioEncodingBitRate(192000);
+        }
 
         try {
             mRecorder.prepare();
             mRecorder.start();
             mStartingTimeMillis = System.currentTimeMillis();
 
+            voiceVisual();
+            startTimer();
+            startForeground(1, createNotification());
 
-          //  startForeground(1, createNotification());
         } catch (IOException e) {
             e.printStackTrace();
         }
 
     }
 
-    private Notification createNotification() {
-
-        return null;
-    }
-
-
-
     public void stopRecording() {
 
-        mRecorder.stop();
-        mElapsedMillis = (System.currentTimeMillis() - mStartingTimeMillis);
-        mRecorder.release();
+        if (mTimerVisual != null) {
+            mTimerVisual.cancel();
+            mTimerVisual = null;
+        }
 
-        Toast.makeText(this, "Recording saved to " + mFilePath, Toast.LENGTH_SHORT).show();
+        try {
+            mRecorder.stop();
+            mElapsedMillis = (System.currentTimeMillis() - mStartingTimeMillis);
+            mRecorder.release();
 
-        mRecorder = null;
+            Toast.makeText(this, getString(R.string.toast_recording_finish) + " " + mFilePath, Toast.LENGTH_LONG).show();
 
-        mDatabase.addRecording(mFileName, mFilePath, mElapsedMillis);
+            if (mIncrementTimerTask != null) {
+                mIncrementTimerTask.cancel();
+                mIncrementTimerTask = null;
+            }
 
+            mRecorder = null;
 
+            try {
+                mDatabase.addRecording(mFileName, mFilePath, mElapsedMillis);
+            } catch (Exception e) {
+                Log.e(LOG_TAG, "Exception", e);
+            }
+
+            stopForeground(true);
+        } catch (RuntimeException e) {
+            Log.e(LOG_TAG, "RuntimeException", e);
+        }
+
+    }
+
+    private void startTimer() {
+
+        mTimer = new Timer();
+        mIncrementTimerTask = new TimerTask() {
+            @Override
+            public void run() {
+                mElapsedSeconds++;
+                NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                notificationManager.notify(1, createNotification());
+            }
+        };
+        mTimer.scheduleAtFixedRate(mIncrementTimerTask, 1000, 1000);
+    }
+
+    private void voiceVisual() {
+        mTimerVisual = new Timer();
+        mTimerVisual.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (getMyServiceListener() != null && mRecorder != null) {
+                    getMyServiceListener().onResult(mRecorder.getMaxAmplitude());
+                }
+            }
+        }, 0, 100);
+    }
+
+    private Notification createNotification() {
+
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        NotificationCompat.Builder mNoBuilder = new NotificationCompat.Builder(this, SOUND_RECORDER_ID);
+
+        NotificationChannel notificationChannel;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+            notificationChannel = new NotificationChannel(SOUND_RECORDER_ID, SOUND_RECORDER, NotificationManager.IMPORTANCE_NONE);
+
+            if (notificationManager != null && notificationManager.getNotificationChannel(SOUND_RECORDER_ID) == null) {
+                notificationManager.createNotificationChannel(notificationChannel);
+            }
+
+            notificationChannel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+            notificationChannel.setSound(null, null);
+            notificationChannel.setShowBadge(false);
+
+        }
+
+        mNoBuilder.setContentTitle(getString(R.string.notification_recording));
+        mNoBuilder.setContentText(mTimerFormat.format(mElapsedSeconds * 1000));
+        mNoBuilder.setOngoing(true);
+        mNoBuilder.setSound(null);
+        mNoBuilder.setVibrate(null);
+        mNoBuilder.setSmallIcon(R.drawable.ic_mic);
+
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        mNoBuilder.setContentIntent(PendingIntent.getActivity(this, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT));
+
+        return mNoBuilder.build();
     }
 
     private void setFileNameAndPath() {
@@ -223,5 +324,10 @@ public class RecordingService extends Service {
         mFileName = "My Recording" + "_" + strDate + ".mp3";
 
         Log.d("FileViewerAdapter", "mFileName - " + mFileName);
+    }
+
+
+    public interface MyServiceListener {
+        void onResult(int response);
     }
 }

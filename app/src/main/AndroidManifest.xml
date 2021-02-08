@@ -4,12 +4,11 @@
     package="com.vullnetlimani.soundrecorder">
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28"
         tools:ignore="ScopedStorage" />
-
 
     <application
         android:allowBackup="true"
@@ -19,18 +18,32 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SoundRecorder">
 
-        <service
-            android:name=".RecordingService"
-            android:enabled="true"
-            android:exported="true" />
-
-        <activity android:name=".MainActivity">
+        <activity
+            android:name=".activities.Splashscreen"
+            android:label="@string/app_name"
+            android:screenOrientation="portrait"
+            android:theme="@style/SplashScreenTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".activities.MainActivity"
+            android:label="@string/app_name" />
+
+        <activity android:name=".activities.SettingsActivity" />
+
+        <activity
+            android:name=".about.About"
+            android:label="@string/pref_about_title" />
+
+        <service
+            android:name=".service.RecordingService"
+            android:stopWithTask="true" />
+
     </application>
 
 </manifest>
