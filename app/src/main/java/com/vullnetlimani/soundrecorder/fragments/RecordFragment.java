@@ -30,8 +30,8 @@ import com.google.android.material.floatingactionbutton.ExtendedFloatingActionBu
 import com.visualizer.amplitude.AudioRecordView;
 import com.vullnetlimani.soundrecorder.Helper.MySharedPreferences;
 import com.vullnetlimani.soundrecorder.R;
-import com.vullnetlimani.soundrecorder.service.RecordingService;
 import com.vullnetlimani.soundrecorder.database.DBHelper;
+import com.vullnetlimani.soundrecorder.service.RecordingService;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -303,7 +303,7 @@ public class RecordFragment extends Fragment {
                 onRecord(mStartRecording);
                 mStartRecording = !mStartRecording;
             } else {
-                Toast.makeText(appCompatActivity, "Ti Shtype Denie", Toast.LENGTH_SHORT).show();
+                Toast.makeText(appCompatActivity, getString(R.string.denied_permission), Toast.LENGTH_SHORT).show();
             }
 
         }

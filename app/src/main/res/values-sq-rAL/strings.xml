@@ -41,4 +41,5 @@
     <string name="pref_high_quality_title">Aktivizo Regjistrimin e HQ</string>
     <string name="pref_about_title">Rreth</string>
     <string name="toast_recording_finish">Regjistrimi u ruajt në</string>
+    <string name="denied_permission">Ju e refuzuat lejen</string>
 </resources>
